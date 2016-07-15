@@ -7,7 +7,6 @@ import datetime
 import shutil
 import signal
 import time
-import sys
 
 feed_url = ("http://racecontrol.me/site/rss")
 net_timeout = 10
