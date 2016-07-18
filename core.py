@@ -8,14 +8,17 @@ import signal
 import time
 import feedparser
 from bs4 import BeautifulSoup
+from retrying import retry
 
 
 FEED_URL = ("http://racecontrol.me/site/rss")
-NET_TIMEOUT = 10
+NET_TIMEOUT = 10*1000
 
-#FUNCS
+# FUNCS
+
 
 class TimeoutException(Exception):
+
     """Timeout"""
     pass
 
@@ -33,12 +36,12 @@ def timeout_sec(seconds):
         signal.alarm(0)
 
 
-def image_download(entry_number):
+@retry(wait_fixed=NET_TIMEOUT)
+def image_download(entry_number, i):
     """Download images from RSS feed"""
     desc = f.entries[entry_number].description
     soup_desc = BeautifulSoup(desc, "lxml")
     # Download file and save under 'i' name
-    # Add timeout exception
     filename = ""
     filename = filename.join([str(entry_number), ".jpeg"])
     with urllib.request.urlopen(soup_desc.img['src']) as response, \
@@ -46,24 +49,34 @@ def image_download(entry_number):
         shutil.copyfileobj(response, out_file)
     IMAGES.append(i)
 
-#MAIN
 
-while True:
+@retry(wait_fixed=NET_TIMEOUT)
+def get_feed():
+    """Get RSS feed"""
+    f = feedparser.parse(FEED_URL)
+    return f
+
+
+@retry(wait_fixed=NET_TIMEOUT)
+def get_post(i):
+    """Get main text from URL"""
+    post_page = urllib.request.urlopen(i)
+    html = post_page.read()
+    soup = BeautifulSoup(html, "lxml")
+    post = soup.find("div", class_="post-news-lead")
+    post = post.text
+    post = post.replace(u'\xa0', u' ')
+    return post
+
+
+def main():
     print('Begin processing the feed...')
-
     # Defining variables
     LINKS = []
     IMAGES = []
-
-    try:
-        with timeout_sec(NET_TIMEOUT):
-            f = feedparser.parse(FEED_URL)
-    except TimeoutException:
-        print("ERROR: Timeout!")
-        continue
-
     i = 0
 
+    f = get_feed()
     FILE = open('time.txt', 'r')
     LAST_DATE = float(FILE.read())
     FILE.close()
@@ -79,14 +92,7 @@ while True:
 
     # Get text from news
     for i in reversed(LINKS):
-        post_page = urllib.request.urlopen(i)
-        # Add timeout exception
-        html = post_page.read()
-        soup = BeautifulSoup(html, "lxml")
-
-        post = soup.find("div", class_="post-news-lead")
-        post = post.text
-        post = post.replace(u'\xa0', u' ')
+        post = get_post(i)
         # For debugging
         print(post)
 
@@ -96,5 +102,7 @@ while True:
         f.entries[0].published, "%a, %d %b %Y %X %z").timetuple())))
     FILE.close()
 
+while True:
+    main()
     print("Going to sleep for 30 seconds")
     time.sleep(30)
