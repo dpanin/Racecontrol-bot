@@ -8,12 +8,17 @@ import shutil
 import signal
 import time
 import feedparser
+import tokens.py
+import telebot
 from bs4 import BeautifulSoup
 from retrying import retry
 
 
 FEED_URL = ("http://racecontrol.me/site/rss")
 NET_TIMEOUT = 10*1000
+CHANNEL_NAME = ''
+
+bot = telebot.TeleBot(BOT_TOKEN)
 
 # FUNCS
 
@@ -95,9 +100,17 @@ def main():
         else:
             break
 
-    # Get text from news
+    # Get text from news and send it and photo to telegram channel
     for i in reversed(LINKS):
         post = get_post(i)
+        bot.send_message(CHANNEL_NAME, post)
+        try:
+            # Trying to find photo for the post
+            photo = open("{0}{1}{2}".format(
+                "tmp/", hashlib.md5(i.encode('utf-8')).hexdigest(), ".jpeg"), 'rb')
+            bot.send_photo(CHANNEL_NAME, photo)
+        except FileNotFoundError:
+            continue
         # For debugging
         print(post)
 
