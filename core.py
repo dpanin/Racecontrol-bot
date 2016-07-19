@@ -7,6 +7,7 @@ import hashlib
 import shutil
 import signal
 import time
+from os import remove
 import feedparser
 import tokens.py
 import telebot
@@ -106,9 +107,11 @@ def main():
         bot.send_message(CHANNEL_NAME, post)
         try:
             # Trying to find photo for the post
-            photo = open("{0}{1}{2}".format(
-                "tmp/", hashlib.md5(i.encode('utf-8')).hexdigest(), ".jpeg"), 'rb')
+            photo_name = "{0}{1}{2}".format(
+                "tmp/", hashlib.md5(i.encode('utf-8')).hexdigest()
+            photo = open(photo_name, ".jpeg"), 'rb')
             bot.send_photo(CHANNEL_NAME, photo)
+            os.remove(photo_name)
         except FileNotFoundError:
             continue
         # For debugging
