@@ -1,15 +1,14 @@
 """ This module checks for new posts and then gets the main text and image."""
-from contextlib import contextmanager
 import urllib.response
 import urllib.request
 import datetime
 import hashlib
+import logging
 import shutil
-import signal
 import time
 from os import remove
 import feedparser
-import tokens.py
+from tokens import BOT_TOKEN
 import telebot
 from bs4 import BeautifulSoup
 from retrying import retry
@@ -20,27 +19,13 @@ NET_TIMEOUT = 10*1000
 CHANNEL_NAME = ''
 
 bot = telebot.TeleBot(BOT_TOKEN)
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(levelname)-8s %(message)s',
+                    datefmt='%m-%d %H:%M',
+                    filename='/tmp/app.log',
+                    filemode='w')
 
 # FUNCS
-
-
-class TimeoutException(Exception):
-
-    """Timeout"""
-    pass
-
-
-@contextmanager
-def timeout_sec(seconds):
-    """Send error message if timeout"""
-    def signal_handler(signum, frame):
-        raise TimeoutException(Exception("Timed out!"))
-    signal.signal(signal.SIGALRM, signal_handler)
-    signal.alarm(seconds)
-    try:
-        yield
-    finally:
-        signal.alarm(0)
 
 
 @retry(wait_fixed=NET_TIMEOUT)
@@ -57,7 +42,7 @@ def image_download(i):
                 open(filename, 'wb') as out_file:
             shutil.copyfileobj(response, out_file)
     except TypeError:
-        print("Image not found")
+        logging.warning("Image not found")
 
 
 @retry(wait_fixed=NET_TIMEOUT)
@@ -80,50 +65,52 @@ def get_post(i):
 
 
 def main():
-    print('Begin processing the feed...')
+    '''Main function'''
+    logging.info('Begin processing the feed')
     # Defining variables
-    LINKS = []
-    IMAGES = []
+    links = []
     i = 0
 
     f = get_feed()
-    FILE = open('time.txt', 'r')
-    LAST_DATE = float(FILE.read())
-    FILE.close()
+    file = open('time.txt', 'r')
+    last_date = float(file.read())
+    file.close()
 
     # Finding newer posts by comparing time
+    logging.debug("Comparing time")
     for i in f['entries']:
         converted_time = time.mktime(datetime.datetime.strptime(
             i.published, "%a, %d %b %Y %X %z").timetuple())
-        if converted_time > LAST_DATE:
-            LINKS.append(i.link)
+        if converted_time > last_date:
+            links.append(i.link)
             image_download(i)
         else:
             break
 
     # Get text from news and send it and photo to telegram channel
-    for i in reversed(LINKS):
-        post = get_post(i)
+    for i in reversed(links):
+        post = get_post(i)+"<p>"+i+"</p>"
         bot.send_message(CHANNEL_NAME, post)
+        time.sleep(1)
         try:
             # Trying to find photo for the post
             photo_name = "{0}{1}{2}".format(
-                "tmp/", hashlib.md5(i.encode('utf-8')).hexdigest()
-            photo = open(photo_name, ".jpeg"), 'rb')
+                "tmp/", hashlib.md5(i.encode('utf-8')).hexdigest(), ".jpeg")
+            photo = open(photo_name, 'rb')
             bot.send_photo(CHANNEL_NAME, photo)
             os.remove(photo_name)
+            time.sleep(1)
         except FileNotFoundError:
+            logging.info("Photo wasn't found before sending message")
             continue
-        # For debugging
-        print(post)
 
     # Write latest post time to file
-    FILE = open('time.txt', 'w')
-    FILE.write(str(time.mktime(datetime.datetime.strptime(
+    file = open('time.txt', 'w')
+    file.write(str(time.mktime(datetime.datetime.strptime(
         f.entries[0].published, "%a, %d %b %Y %X %z").timetuple())))
-    FILE.close()
+    file.close()
 
 while True:
     main()
-    print("Going to sleep for 30 seconds")
+    logging.info("Script went to sleep")
     time.sleep(30)
