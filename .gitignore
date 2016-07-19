@@ -101,3 +101,6 @@ tmp/
 # Search db folder
 search.db/
 test.db
+
+# Tokens
+tokens.py
