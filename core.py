@@ -3,6 +3,7 @@ from contextlib import contextmanager
 import urllib.response
 import urllib.request
 import datetime
+import hashlib
 import shutil
 import signal
 import time
@@ -37,17 +38,20 @@ def timeout_sec(seconds):
 
 
 @retry(wait_fixed=NET_TIMEOUT)
-def image_download(entry_number, i):
+def image_download(i):
     """Download images from RSS feed"""
-    desc = f.entries[entry_number].description
+    desc = i.description
     soup_desc = BeautifulSoup(desc, "lxml")
-    # Download file and save under 'i' name
+    # Download file and save under hash of the post link if image exists
+    link_hash = hashlib.md5(i.link.encode('utf-8')).hexdigest()
     filename = ""
-    filename = filename.join([str(entry_number), ".jpeg"])
-    with urllib.request.urlopen(soup_desc.img['src']) as response, \
-            open(filename, 'wb') as out_file:
-        shutil.copyfileobj(response, out_file)
-    IMAGES.append(i)
+    filename = filename.join(["tmp/", link_hash, ".jpeg"])
+    try:
+        with urllib.request.urlopen(soup_desc.img['src']) as response, \
+                open(filename, 'wb') as out_file:
+            shutil.copyfileobj(response, out_file)
+    except TypeError:
+        print("Image not found")
 
 
 @retry(wait_fixed=NET_TIMEOUT)
@@ -87,6 +91,7 @@ def main():
             i.published, "%a, %d %b %Y %X %z").timetuple())
         if converted_time > LAST_DATE:
             LINKS.append(i.link)
+            image_download(i)
         else:
             break
 
