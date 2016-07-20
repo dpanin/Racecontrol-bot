@@ -59,8 +59,11 @@ def get_post(i):
     post_page = urllib.request.urlopen(i)
     html = post_page.read()
     soup = BeautifulSoup(html, "html.parser")
-    post = soup.find("div", class_="post-news-lead").text
-    post = post.replace(u'\xa0', u' ')
+    body = soup.find(
+        "div", class_="post-news-lead").text.replace(u'\xa0', u' ')
+    title = soup.find(
+        "h3", class_="post-news-title").text.replace(u'\xa0', u' ')
+    post = "&lt;b&gt;" + title + "&lt;b&gt;" + "\n\n" + body + " " + i
     return post
 
 
@@ -89,8 +92,9 @@ def main():
 
     # Get text from news and send it and photo to telegram channel
     for i in reversed(links):
-        post = get_post(i)+" "+i
-        bot.send_message(CHANNEL_NAME, post, parse_mode="HTML")
+        post = get_post(i)
+        bot.send_message(
+            CHANNEL_NAME, post, parse_mode="HTML", disable_web_page_preview=True)
         logging.debug("Post %s sent" % i)
         time.sleep(1)
         try:
