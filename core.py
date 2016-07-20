@@ -16,7 +16,7 @@ from retrying import retry
 
 FEED_URL = ("http://racecontrol.me/site/rss")
 NET_TIMEOUT = 10*1000
-CHANNEL_NAME = '@RacecontrolNews'
+CHANNEL_NAME = 'acecontrolNews'
 
 bot = telebot.TeleBot(BOT_TOKEN)
 logging.basicConfig(level=logging.INFO,
@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.INFO,
 # FUNCS
 
 
-#@retry(wait_fixed=NET_TIMEOUT)
+@retry(wait_fixed=NET_TIMEOUT)
 def image_download(i):
     """Download images from RSS feed"""
     desc = i.description
@@ -38,7 +38,7 @@ def image_download(i):
     filename = ""
     filename = filename.join(["tmp/", link_hash, ".jpeg"])
     try:
-        logging.debug('Downloading photo')
+        logging.debug('Downloading photo %s' % i.link)
         with urllib.request.urlopen(soup_desc.img['src']) as response, \
                 open(filename, 'wb') as out_file:
             shutil.copyfileobj(response, out_file)
@@ -92,7 +92,7 @@ def main():
     for i in reversed(links):
         post = get_post(i)+" "+i
         bot.send_message(CHANNEL_NAME, post, parse_mode="HTML")
-        logging.debug("Post sent")
+        logging.debug("Post %s sent" % i)
         time.sleep(1)
         try:
             # Trying to find photo for the post
@@ -100,8 +100,8 @@ def main():
                 "tmp/", hashlib.md5(i.encode('utf-8')).hexdigest(), ".jpeg")
             photo = open(photo_name, 'rb')
             bot.send_photo(CHANNEL_NAME, photo)
-            os.remove(photo_name)
             logging.debug("Photo sent")
+            os.remove(photo_name)
             time.sleep(1)
         except FileNotFoundError:
             logging.info("Photo wasn't found before sending message")
