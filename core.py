@@ -6,7 +6,7 @@ import hashlib
 import logging
 import shutil
 import time
-from os import remove
+import os
 import feedparser
 from tokens import BOT_TOKEN
 import telebot
@@ -16,19 +16,19 @@ from retrying import retry
 
 FEED_URL = ("http://racecontrol.me/site/rss")
 NET_TIMEOUT = 10*1000
-CHANNEL_NAME = ''
+CHANNEL_NAME = '@RacecontrolNews'
 
 bot = telebot.TeleBot(BOT_TOKEN)
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(levelname)-8s %(message)s',
                     datefmt='%m-%d %H:%M',
-                    filename='/tmp/app.log',
+                    filename='tmp/app.log',
                     filemode='w')
 
 # FUNCS
 
 
-@retry(wait_fixed=NET_TIMEOUT)
+#@retry(wait_fixed=NET_TIMEOUT)
 def image_download(i):
     """Download images from RSS feed"""
     desc = i.description
@@ -38,6 +38,7 @@ def image_download(i):
     filename = ""
     filename = filename.join(["tmp/", link_hash, ".jpeg"])
     try:
+        logging.debug('Downloading photo')
         with urllib.request.urlopen(soup_desc.img['src']) as response, \
                 open(filename, 'wb') as out_file:
             shutil.copyfileobj(response, out_file)
@@ -89,8 +90,9 @@ def main():
 
     # Get text from news and send it and photo to telegram channel
     for i in reversed(links):
-        post = get_post(i)+"<p>"+i+"</p>"
-        bot.send_message(CHANNEL_NAME, post)
+        post = get_post(i)+" "+i
+        bot.send_message(CHANNEL_NAME, post, parse_mode="HTML")
+        logging.debug("Post sent")
         time.sleep(1)
         try:
             # Trying to find photo for the post
@@ -99,6 +101,7 @@ def main():
             photo = open(photo_name, 'rb')
             bot.send_photo(CHANNEL_NAME, photo)
             os.remove(photo_name)
+            logging.debug("Photo sent")
             time.sleep(1)
         except FileNotFoundError:
             logging.info("Photo wasn't found before sending message")
