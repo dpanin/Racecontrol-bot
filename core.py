@@ -32,7 +32,7 @@ logging.basicConfig(level=logging.INFO,
 def image_download(i):
     """Download images from RSS feed"""
     desc = i.description
-    soup_desc = BeautifulSoup(desc, "lxml")
+    soup_desc = BeautifulSoup(desc, "html.parser")
     # Download file and save under hash of the post link if image exists
     link_hash = hashlib.md5(i.link.encode('utf-8')).hexdigest()
     filename = ""
@@ -58,7 +58,7 @@ def get_post(i):
     """Get main text from URL"""
     post_page = urllib.request.urlopen(i)
     html = post_page.read()
-    soup = BeautifulSoup(html, "lxml")
+    soup = BeautifulSoup(html, "html.parser")
     post = soup.find("div", class_="post-news-lead")
     post = post.text
     post = post.replace(u'\xa0', u' ')
