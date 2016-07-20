@@ -16,7 +16,7 @@ from retrying import retry
 
 FEED_URL = ("http://racecontrol.me/site/rss")
 NET_TIMEOUT = 10*1000
-CHANNEL_NAME = 'acecontrolNews'
+CHANNEL_NAME = '@RacecontrolNews'
 
 bot = telebot.TeleBot(BOT_TOKEN)
 logging.basicConfig(level=logging.INFO,
