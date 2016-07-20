@@ -59,8 +59,7 @@ def get_post(i):
     post_page = urllib.request.urlopen(i)
     html = post_page.read()
     soup = BeautifulSoup(html, "html.parser")
-    post = soup.find("div", class_="post-news-lead")
-    post = post.text
+    post = soup.find("div", class_="post-news-lead").text
     post = post.replace(u'\xa0', u' ')
     return post
 
