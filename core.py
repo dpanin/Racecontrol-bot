@@ -63,7 +63,7 @@ def get_post(i):
         "div", class_="post-news-lead").text.replace(u'\xa0', u' ')
     title = soup.find(
         "h3", class_="post-news-title").text.replace(u'\xa0', u' ')
-    post = "&lt;b&gt;" + title + "&lt;b&gt;" + "\n\n" + body + " " + i
+    post = "*" + title + "*" + "\n\n" + body + " " + i
     return post
 
 
@@ -94,7 +94,7 @@ def main():
     for i in reversed(links):
         post = get_post(i)
         bot.send_message(
-            CHANNEL_NAME, post, parse_mode="HTML", disable_web_page_preview=True)
+            CHANNEL_NAME, post, parse_mode="markdown", disable_web_page_preview=True)
         logging.debug("Post %s sent" % i)
         time.sleep(1)
         try:
