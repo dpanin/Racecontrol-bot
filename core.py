@@ -7,6 +7,7 @@ import logging
 import shutil
 import time
 import os
+import re
 import feedparser
 from tokens import BOT_TOKEN
 import telebot
@@ -29,21 +30,27 @@ logging.basicConfig(level=logging.INFO,
 
 
 @retry(wait_fixed=NET_TIMEOUT)
-def image_download(i):
-    """Download images from RSS feed"""
+def send_image(i):
+    """Send images from RSS feed"""
     desc = i.description
     soup_desc = BeautifulSoup(desc, "html.parser")
     # Download file and save under hash of the post link if image exists
     link_hash = hashlib.md5(i.link.encode('utf-8')).hexdigest()
-    filename = ""
-    filename = filename.join(["tmp/", link_hash, ".jpeg"])
+    filepath = ""
+    filepath = filepath.join(["tmp/", link_hash, ".jpeg"])
     try:
-        logging.debug('Downloading photo %s' % i.link)
+        logging.debug('Downloading image %s' % i.link)
         with urllib.request.urlopen(soup_desc.img['src']) as response, \
-                open(filename, 'wb') as out_file:
+                open(filepath, 'wb') as out_file:
             shutil.copyfileobj(response, out_file)
+        photo = open(filepath, 'rb')
+        bot.send_photo(CHANNEL_NAME, photo)
+        logging.debug("Image sent")
+        os.remove(filepath)
+        time.sleep(1)
     except TypeError:
         logging.warning("Image not found")
+
 
 
 @retry(wait_fixed=NET_TIMEOUT)
@@ -54,24 +61,25 @@ def get_feed():
 
 
 @retry(wait_fixed=NET_TIMEOUT)
-def get_post(i):
-    """Get main text from URL"""
-    post_page = urllib.request.urlopen(i)
-    html = post_page.read()
-    soup = BeautifulSoup(html, "html.parser")
-    body = soup.find(
-        "div", class_="post-news-lead").text.replace(u'\xa0', u' ')
-    title = soup.find(
-        "h3", class_="post-news-title").text.replace(u'\xa0', u' ')
-    post = "*" + title + "*" + "\n\n" + body + " " + i
-    return post
+def send_post(i):
+    """Get and send main text  and title from RSS"""
+    title = i.title
+    desc = i.description
+    soup_desc = BeautifulSoup(desc, "html.parser")
+    body = re.sub(' +',' ', soup_desc.text)
+    body.replace("\n", "")
+    post = "*" + title + "*" + "\n" + body + " " + i.link
+    bot.send_message(
+        CHANNEL_NAME, post, parse_mode="markdown", disable_web_page_preview=True)
+    logging.debug("Post %s sent" % i)
+    time.sleep(1)
+
 
 
 def main():
     '''Main function'''
     logging.info('Begin processing the feed')
     # Defining variables
-    links = []
     i = 0
 
     f = get_feed()
@@ -81,34 +89,14 @@ def main():
 
     # Finding newer posts by comparing time
     logging.debug("Comparing time")
-    for i in f['entries']:
+    for i in reversed(f['entries']):
         converted_time = time.mktime(datetime.datetime.strptime(
             i.published, "%a, %d %b %Y %X %z").timetuple())
         if converted_time > last_date:
-            links.append(i.link)
-            image_download(i)
+            send_post(i)
+            send_image(i)
         else:
             break
-
-    # Get text from news and send it and photo to telegram channel
-    for i in reversed(links):
-        post = get_post(i)
-        bot.send_message(
-            CHANNEL_NAME, post, parse_mode="markdown", disable_web_page_preview=True)
-        logging.debug("Post %s sent" % i)
-        time.sleep(1)
-        try:
-            # Trying to find photo for the post
-            photo_name = "{0}{1}{2}".format(
-                "tmp/", hashlib.md5(i.encode('utf-8')).hexdigest(), ".jpeg")
-            photo = open(photo_name, 'rb')
-            bot.send_photo(CHANNEL_NAME, photo)
-            logging.debug("Photo sent")
-            os.remove(photo_name)
-            time.sleep(1)
-        except FileNotFoundError:
-            logging.info("Photo wasn't found before sending message")
-            continue
 
     # Write latest post time to file
     file = open('time.txt', 'w')
