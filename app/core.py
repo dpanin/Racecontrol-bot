@@ -8,12 +8,11 @@ import shutil
 import time
 import os
 import feedparser
-from tokens import BOT_TOKEN
 import telebot
 from bs4 import BeautifulSoup
 from retrying import retry
 
-
+BOT_TOKEN = os.environ.get('TOKEN')
 FEED_URL = ("http://racecontrol.me/site/rss")
 NET_TIMEOUT = 10*1000
 CHANNEL_NAME = '@RacecontrolNews'
