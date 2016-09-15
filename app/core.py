@@ -1,4 +1,4 @@
-""" This module checks for new posts and then gets the main text and image."""
+    """ This module checks for new posts and then gets the main text and image."""
 import urllib.response
 import urllib.request
 import datetime
@@ -18,7 +18,8 @@ FEED_URL = os.environ.get('RSS')
 NET_TIMEOUT = 10*1000
 CHANNEL_NAME = 'CHANNEL'
 
-bot = telebot.TeleBot(BOT_TOKEN)
+bot = telegram.Bot(BOT_TOKEN)
+
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(levelname)-8s %(message)s',
                     datefmt='%m-%d %H:%M',
@@ -26,6 +27,33 @@ logging.basicConfig(level=logging.INFO,
                     filemode='w')
 
 # FUNCS
+
+
+@retry(wait_fixed=NET_TIMEOUT)
+def get_feed():
+    """Get RSS feed"""
+    f = feedparser.parse(FEED_URL)
+    return f
+
+
+  def parse_post(i):
+    title = i.title
+    desc = i.description
+    soup_desc = BeautifulSoup(desc, "html.parser")
+    body = re.sub(' +', ' ', soup_desc.text)
+    body.replace("\n", "")
+    post = "*" + title + "*" + "\n" + body + " " + i.link_hash
+    return post
+
+
+@retry(wait_fixed=NET_TIMEOUT)
+def send_post(i):
+    """Send main text  and title from RSS"""
+    post = parse_post(i)
+    bot.send_message(
+        chat_id=CHANNEL_NAME, text=post, parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True)
+    logging.debug("Post %s sent" % i)
+    time.sleep(1)
 
 
 @retry(wait_fixed=NET_TIMEOUT)
@@ -42,45 +70,26 @@ def send_image(i):
         with urllib.request.urlopen(soup_desc.img['src']) as response, \
                 open(filepath, 'wb') as out_file:
             shutil.copyfileobj(response, out_file)
-        photo = open(filepath, 'rb')
-        bot.send_photo(CHANNEL_NAME, photo)
+        bot.send_photo(chat_id=CHANNEL_NAME, photo=open(filepath, 'rb'))
         logging.debug("Image sent")
         os.remove(filepath)
         time.sleep(1)
     except TypeError:
         logging.warning("Image not found")
 
-
-
-@retry(wait_fixed=NET_TIMEOUT)
-def get_feed():
-    """Get RSS feed"""
-    f = feedparser.parse(FEED_URL)
-    return f
-
-
-@retry(wait_fixed=NET_TIMEOUT)
-def send_post(i):
-    """Get and send main text  and title from RSS"""
-    title = i.title
-    desc = i.description
-    soup_desc = BeautifulSoup(desc, "html.parser")
-    body = re.sub(' +',' ', soup_desc.text)
-    body.replace("\n", "")
-    post = "*" + title + "*" + "\n" + body + " " + i.link
-    bot.send_message(
-        CHANNEL_NAME, post, parse_mode="markdown", disable_web_page_preview=True)
-    logging.debug("Post %s sent" % i)
-    time.sleep(1)
-
-
+def save_time(time):
+    # Write latest post time to file
+    file = open('time.txt', 'w')
+    file.write(str(time.mktime(datetime.datetime.strptime(
+        f.entries[0].published, "%a, %d %b %Y %X %z").timetuple())))
+    file.close()
+    
 
 def main():
     '''Main function'''
     logging.info('Begin processing the feed')
-    # Defining variables
-    i = 0
 
+    i = 0
     f = get_feed()
     file = open('time.txt', 'r')
     last_date = float(file.read())
@@ -94,15 +103,10 @@ def main():
         if converted_time > last_date:
             send_post(i)
             send_image(i)
+            save_time(i.published)
         else:
             break
-
-    # Write latest post time to file
-    file = open('time.txt', 'w')
-    file.write(str(time.mktime(datetime.datetime.strptime(
-        f.entries[0].published, "%a, %d %b %Y %X %z").timetuple())))
-    file.close()
-
+            
 while True:
     main()
     logging.info("Script went to sleep")
