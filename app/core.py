@@ -9,7 +9,7 @@ import time
 import os
 import re
 import feedparser
-import telebot
+import telegram
 from bs4 import BeautifulSoup
 from retrying import retry
 
@@ -23,7 +23,7 @@ bot = telegram.Bot(BOT_TOKEN)
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(levelname)-8s %(message)s',
                     datefmt='%m-%d %H:%M',
-                    filename='tmp/app.log',
+                    filename='/opt/logs/app.log',
                     filemode='w')
 
 # FUNCS
@@ -66,16 +66,16 @@ def send_image(i):
     filepath = ""
     filepath = filepath.join(["tmp/", link_hash, ".jpeg"])
     try:
-        logging.debug('Downloading image %s' % i.link)
+        logging.debug("Downloading image %s" % i.link)
         with urllib.request.urlopen(soup_desc.img['src']) as response, \
                 open(filepath, 'wb') as out_file:
             shutil.copyfileobj(response, out_file)
         bot.send_photo(chat_id=CHANNEL_NAME, photo=open(filepath, 'rb'))
-        logging.debug("Image sent")
+        logging.debug("Image %s sent" % i.link)
         os.remove(filepath)
         time.sleep(1)
     except TypeError:
-        logging.warning("Image not found")
+        logging.warning("Image %s not found" % i.link)
 
 def save_time(time):
     # Write latest post time to file
