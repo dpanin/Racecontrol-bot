@@ -1,4 +1,4 @@
-    """ This module checks for new posts and then gets the main text and image."""
+""" This module checks for new posts and then gets the main text and image."""
 import urllib.response
 import urllib.request
 import datetime
@@ -16,14 +16,14 @@ from retrying import retry
 BOT_TOKEN = os.environ.get('TOKEN')
 FEED_URL = os.environ.get('RSS')
 NET_TIMEOUT = 10*1000
-CHANNEL_NAME = 'CHANNEL'
+CHANNEL_NAME = '@RacecontrolNews'
 
 bot = telegram.Bot(BOT_TOKEN)
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(levelname)-8s %(message)s',
                     datefmt='%m-%d %H:%M',
-                    filename='/opt/logs/app.log',
+                    filename='tmp/app.log',
                     filemode='w')
 
 # FUNCS
@@ -36,17 +36,19 @@ def get_feed():
     return f
 
 
-  def parse_post(i):
-    title = i.title
-    desc = i.description
-    soup_desc = BeautifulSoup(desc, "html.parser")
-    body = re.sub(' +', ' ', soup_desc.text)
-    body.replace("\n", "")
-    post = "*" + title + "*" + "\n" + body + " " + i.link_hash
+def parse_post(i):
+    post_page = urllib.request.urlopen(i.link)
+    html = post_page.read()
+    soup = BeautifulSoup(html, "html.parser")
+    body = soup.find(
+        "div", class_="post-news-lead").text.replace(u'\xa0', u' ')
+    title = soup.find(
+        "h3", class_="post-news-title").text.replace(u'\xa0', u' ')
+    post = "*" + title + "*" + "\n\n" + body + " " + i.link
     return post
 
 
-@retry(wait_fixed=NET_TIMEOUT)
+#@retry(wait_fixed=NET_TIMEOUT)
 def send_post(i):
     """Send main text  and title from RSS"""
     post = parse_post(i)
@@ -56,7 +58,7 @@ def send_post(i):
     time.sleep(1)
 
 
-@retry(wait_fixed=NET_TIMEOUT)
+#@retry(wait_fixed=NET_TIMEOUT)
 def send_image(i):
     """Send images from RSS feed"""
     desc = i.description
@@ -77,11 +79,11 @@ def send_image(i):
     except TypeError:
         logging.warning("Image %s not found" % i.link)
 
-def save_time(time):
+def save_time(time_string):
     # Write latest post time to file
     file = open('time.txt', 'w')
     file.write(str(time.mktime(datetime.datetime.strptime(
-        f.entries[0].published, "%a, %d %b %Y %X %z").timetuple())))
+        time_string, "%a, %d %b %Y %X %z").timetuple())))
     file.close()
     
 
