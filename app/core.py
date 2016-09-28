@@ -44,6 +44,7 @@ def parse_post(i):
         "div", class_="post-news-lead").text.replace(u'\xa0', u' ')
     title = soup.find(
         "h3", class_="post-news-title").text.replace(u'\xa0', u' ')
+    body = re.sub(' +',' ', body)
     post = "*" + title + "*" + "\n\n" + body + " " + i.link
     return post
 
