@@ -45,7 +45,7 @@ def parse_post(i):
     title = soup.find(
         "h3", class_="post-news-title").text.replace(u'\xa0', u' ')
     body = re.sub(' +',' ', body)
-    post = "*" + title + "*" + "\n\n" + body + " " + i.link
+    post = "<b>" + title + "</b>" + "\n\n" + body + " " + i.link
     return post
 
 
@@ -54,7 +54,7 @@ def send_post(i):
     """Send main text  and title from RSS"""
     post = parse_post(i)
     bot.send_message(
-        chat_id=CHANNEL_NAME, text=post, parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True)
+        chat_id=CHANNEL_NAME, text=post, parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=True)
     logging.debug("Post %s sent" % i)
     time.sleep(1)
 
