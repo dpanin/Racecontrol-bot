@@ -17,6 +17,7 @@ BOT_TOKEN = os.environ.get('TOKEN')
 FEED_URL = os.environ.get('RSS')
 NET_TIMEOUT = 10*1000
 CHANNEL_NAME = '@RacecontrolNews'
+TIME = os.environ.get('TIME')
 
 bot = telegram.Bot(BOT_TOKEN)
 
@@ -28,14 +29,7 @@ logging.basicConfig(level=logging.INFO,
 
 # FUNCS
 
-
 @retry(wait_fixed=NET_TIMEOUT)
-def get_feed():
-    """Get RSS feed"""
-    f = feedparser.parse(FEED_URL)
-    return f
-
-
 def parse_post(i):
     post_page = urllib.request.urlopen(i.link)
     html = post_page.read()
@@ -49,7 +43,7 @@ def parse_post(i):
     return post
 
 
-#@retry(wait_fixed=NET_TIMEOUT)
+@retry(wait_fixed=NET_TIMEOUT)
 def send_post(i):
     """Send main text  and title from RSS"""
     post = parse_post(i)
@@ -59,7 +53,7 @@ def send_post(i):
     time.sleep(1)
 
 
-#@retry(wait_fixed=NET_TIMEOUT)
+@retry(wait_fixed=NET_TIMEOUT)
 def send_image(i):
     """Send images from RSS feed"""
     desc = i.description
@@ -93,7 +87,7 @@ def main():
     logging.info('Begin processing the feed')
 
     i = 0
-    f = get_feed()
+    f = feedparser.parse(FEED_URL)
     file = open('time.txt', 'r')
     last_date = float(file.read())
     file.close()
@@ -109,7 +103,15 @@ def main():
             save_time(i.published)
         else:
             break
-            
+
+#MAIN
+
+if TIME != "-1":
+    file = open('time.txt', 'w')
+    file.write(TIME)
+    file.close()
+
+ 
 while True:
     main()
     logging.info("Script went to sleep")
