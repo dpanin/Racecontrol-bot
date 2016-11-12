@@ -18,7 +18,6 @@ FEED_URL = os.environ.get('RSS')
 NET_TIMEOUT = 10*1000
 CHANNEL_NAME = '@RacecontrolNews'
 TIME = os.environ.get('TIME')
-
 bot = telegram.Bot(BOT_TOKEN)
 
 logging.basicConfig(level=logging.INFO,
@@ -101,8 +100,6 @@ def main():
             send_post(i)
             send_image(i)
             save_time(i.published)
-        else:
-            break
 
 #MAIN
 
