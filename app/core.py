@@ -1,5 +1,4 @@
 """ This module checks for new posts and then gets the main text and image."""
-import urllib.response
 import urllib.request
 import datetime
 import hashlib
@@ -13,7 +12,7 @@ from bs4 import BeautifulSoup
 from retrying import retry
 
 BOT_TOKEN = os.environ.get('TOKEN')
-FEED_URL = os.environ.get('http://racecontrol.me/site/rss')
+FEED_URL = 'http://racecontrol.me/site/rss'
 NET_TIMEOUT = 10*1000
 CHANNEL_NAME = '@RacecontrolNews'
 TIME = os.environ.get('TIME')
@@ -72,12 +71,9 @@ def save_time(time_string):
 
 def main():
     '''Main function'''
-    i = 0
     f = feedparser.parse(FEED_URL)
-    file = open('time.txt', 'r')
-    last_date = float(file.read())
-    file.close()
-
+    with open('time.txt') as file:
+        last_date = float(file.read())
     # Finding newer posts by comparing time
     for i in reversed(f['entries']):
         converted_time = time.mktime(datetime.datetime.strptime(
@@ -88,12 +84,11 @@ def main():
             save_time(i.published)
 
 # MAIN
-
-if TIME != "-1":
-    file = open('time.txt', 'w')
-    file.write(TIME)
-    file.close()
-
+with open('time.txt', 'w') as file:
+    if TIME == "-1":
+        file.write(str(round(time.time())))
+    else:
+        file.write(TIME)
 
 while True:
     main()
