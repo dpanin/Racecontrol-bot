@@ -3,7 +3,6 @@ import urllib.response
 import urllib.request
 import datetime
 import hashlib
-import logging
 import shutil
 import time
 import os
@@ -20,11 +19,6 @@ CHANNEL_NAME = '@RacecontrolNews'
 TIME = os.environ.get('TIME')
 bot = telegram.Bot(BOT_TOKEN)
 
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(levelname)-8s %(message)s',
-                    datefmt='%m-%d %H:%M',
-                    filename='tmp/app.log',
-                    filemode='w')
 
 # FUNCS
 
@@ -37,7 +31,7 @@ def parse_post(i):
         "div", class_="post-news-lead").text.replace(u'\xa0', u' ')
     title = soup.find(
         "h3", class_="post-news-title").text.replace(u'\xa0', u' ')
-    body = re.sub(' +',' ', body)
+    body = re.sub(' +', ' ', body)
     post = "<b>" + title + "</b>" + "\n\n" + body + " " + i.link
     return post
 
@@ -48,7 +42,6 @@ def send_post(i):
     post = parse_post(i)
     bot.send_message(
         chat_id=CHANNEL_NAME, text=post, parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=True)
-    logging.debug("Post %s sent" % i)
     time.sleep(1)
 
 
@@ -61,17 +54,13 @@ def send_image(i):
     link_hash = hashlib.md5(i.link.encode('utf-8')).hexdigest()
     filepath = ""
     filepath = filepath.join(["tmp/", link_hash, ".jpeg"])
-    try:
-        logging.debug("Downloading image %s" % i.link)
-        with urllib.request.urlopen(soup_desc.img['src']) as response, \
-                open(filepath, 'wb') as out_file:
-            shutil.copyfileobj(response, out_file)
-        bot.send_photo(chat_id=CHANNEL_NAME, photo=open(filepath, 'rb'))
-        logging.debug("Image %s sent" % i.link)
-        os.remove(filepath)
-        time.sleep(1)
-    except TypeError:
-        logging.warning("Image %s not found" % i.link)
+    with urllib.request.urlopen(soup_desc.img['src']) as response, \
+            open(filepath, 'wb') as out_file:
+        shutil.copyfileobj(response, out_file)
+    bot.send_photo(chat_id=CHANNEL_NAME, photo=open(filepath, 'rb'))
+    os.remove(filepath)
+    time.sleep(1)
+
 
 def save_time(time_string):
     # Write latest post time to file
@@ -79,12 +68,10 @@ def save_time(time_string):
     file.write(str(time.mktime(datetime.datetime.strptime(
         time_string, "%a, %d %b %Y %X %z").timetuple())))
     file.close()
-    
+
 
 def main():
     '''Main function'''
-    logging.info('Begin processing the feed')
-
     i = 0
     f = feedparser.parse(FEED_URL)
     file = open('time.txt', 'r')
@@ -92,7 +79,6 @@ def main():
     file.close()
 
     # Finding newer posts by comparing time
-    logging.debug("Comparing time")
     for i in reversed(f['entries']):
         converted_time = time.mktime(datetime.datetime.strptime(
             i.published, "%a, %d %b %Y %X %z").timetuple())
@@ -101,15 +87,14 @@ def main():
             send_image(i)
             save_time(i.published)
 
-#MAIN
+# MAIN
 
 if TIME != "-1":
     file = open('time.txt', 'w')
     file.write(TIME)
     file.close()
 
- 
+
 while True:
     main()
-    logging.info("Script went to sleep")
     time.sleep(30)
